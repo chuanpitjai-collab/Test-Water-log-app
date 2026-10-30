@@ -1,1 +1,178 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบบันทึกคุณภาพน้ำ</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f0f2f5;
+      padding: 16px;
+      margin: 0;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      max-width: 400px;
+      margin: auto;
+    }
+    h2, h3 {
+      color: #0284c7;
+      text-align: center;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #333;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      background-color: #0284c7;
+      color: white;
+      border: none;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:active {
+      background-color: #0369a1;
+    }
+    ul {
+      padding-left: 20px;
+      color: #555;
+      max-height: 250px;
+      overflow-y: auto;
+    }
+    li {
+      margin-bottom: 8px;
+      font-size: 13px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
 
+<div class="container">
+  <h2>ระบบบันทึกคุณภาพน้ำ</h2>
+  
+  <div class="form-group">
+    <label>วันที่และเวลา:</label>
+    <input type="datetime-local" id="recordDate">
+  </div>
+
+  <div class="form-group">
+    <label>รหัสจุดตรวจวัด (Station ID):</label>
+    <input type="text" id="station" placeholder="เช่น A2">
+  </div>
+
+  <div class="form-group">
+    <label>ค่าความเป็นกรด-ด่าง (pH):</label>
+    <input type="number" step="0.1" id="ph" placeholder="เช่น 8.5">
+  </div>
+
+  <div class="form-group">
+    <label>อุณหภูมิ (°C):</label>
+    <input type="number" step="0.1" id="temp" placeholder="เช่น 27.5">
+  </div>
+
+  <div class="form-group">
+    <label>ออกซิเจนละลายน้ำ (DO mg/L):</label>
+    <input type="number" step="0.1" id="doValue" placeholder="เช่น 6.5">
+  </div>
+
+  <div class="form-group">
+    <label>แอมโมเนีย (Ammonia mg/L):</label>
+    <input type="number" step="0.01" id="ammonia" placeholder="เช่น 0">
+  </div>
+
+  <div class="form-group">
+    <label>ไนไตรท์ (Nitrite mg/L):</label>
+    <input type="number" step="0.01" id="nitrite" placeholder="เช่น 0">
+  </div>
+
+  <button onclick="saveData()">บันทึกข้อมูล</button>
+
+  <h3>ประวัติการบันทึก</h3>
+  <ul id="logList"></ul>
+</div>
+
+<script>
+  window.onload = function() {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    const dateInput = document.getElementById('recordDate');
+    if (dateInput) {
+      dateInput.value = now.toISOString().slice(0, 16);
+    }
+    loadLogs();
+  };
+
+  function saveData() {
+    const recordDate = document.getElementById('recordDate').value;
+    const station = document.getElementById('station').value;
+    const ph = document.getElementById('ph').value;
+    const temp = document.getElementById('temp').value;
+    const doValue = document.getElementById('doValue').value;
+    const ammonia = document.getElementById('ammonia').value;
+    const nitrite = document.getElementById('nitrite').value;
+
+    if (station.trim() === "" || ph === "" || temp === "") {
+      alert("กรุณากรอก รหัสจุดตรวจวัด, ค่า pH และอุณหภูมิ ให้ครบถ้วน!");
+      return;
+    }
+
+    const finalDate = recordDate ? new Date(recordDate).toLocaleString('th-TH') : new Date().toLocaleString('th-TH');
+
+    const logText = `📅 ${finalDate} | 📍 ${station} | pH: ${ph} | 🌡️ ${temp}°C | 🫧 DO: ${doValue || '-'} | 🧪 NH3: ${ammonia || '-'} | 🧪 NO2: ${nitrite || '-'}`;
+
+    // ดึงข้อมูลเดิมจากเครื่อง
+    let logs = JSON.parse(localStorage.getItem('waterLogs') || '[]');
+    logs.unshift(logText); // เอาอันใหม่ไว้บนสุด
+
+    // บันทึกกลับลงเครื่อง
+    localStorage.setItem('waterLogs', JSON.stringify(logs));
+
+    // เคลียร์ค่าช่องกรอก
+    document.getElementById('station').value = '';
+    document.getElementById('ph').value = '';
+    document.getElementById('temp').value = '';
+    document.getElementById('doValue').value = '';
+    document.getElementById('ammonia').value = '';
+    document.getElementById('nitrite').value = '';
+
+    loadLogs();
+    alert("บันทึกข้อมูลสำเร็จ!");
+  }
+
+  function loadLogs() {
+    const ul = document.getElementById('logList');
+    ul.innerHTML = '';
+    let logs = JSON.parse(localStorage.getItem('waterLogs') || '[]');
+    logs.forEach(text => {
+      const li = document.createElement('li');
+      li.textContent = text;
+      ul.appendChild(li);
+    });
+  }
+</script>
+
+</body>
+</html>
